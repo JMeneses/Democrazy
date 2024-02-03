@@ -2,9 +2,8 @@
 #----------------------------------------
 # Exploring Tools: streamlit or chainlit or gradio, langchain, chromaDB, PyPDF
 
-__import__('pysqlite3')
+import pysqlite3
 import sys
-import sqlite3
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
 import json
@@ -24,6 +23,7 @@ from langchain_community.vectorstores import Chroma
 from langchain_community.document_loaders.merge import MergedDataLoader
 from langchain_community.embeddings.sentence_transformer import SentenceTransformerEmbeddings
 import streamlit as st
+
 
 
 # Master function
