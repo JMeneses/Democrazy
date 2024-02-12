@@ -42,25 +42,28 @@ def setupPoliticalRAG(user_initial_query):
     collection_list = persistent_client.list_collections()
     print(collection_list)
     collection = None
+    
     if (len(collection_list)==0):
         # 1.1 Load
         loaderVolt = PyPDFLoader("data/volt_programa_legislativas_2024.pdf")
         loaderPCP = PyPDFLoader("data/pcp_programa_legislativas_2024.pdf")
-        loaderND = PyPDFLoader("data/novadireita_programa_legislativas_2024.pdf")
         loaderBE = PyPDFLoader("data/bloco_esquerda_programa_legislativas_2024.pdf")
         loaderLivre = PyPDFLoader("data/livre_programa_legislativas_2024.pdf")
-        loaderIL = PyPDFLoader("data/il_programa_legislativas_2024.pdf")
-        loaderChega1 = PyPDFLoader("data/chega_habitacao_programa_legislativas_2024.pdf")
-        loaderChega2 = PyPDFLoader("data/chega_saude_programa_legislativas_2024.pdf")
-        
+        loaderIL = PyPDFLoader("data/il_programa_legislativas_2024.pdf") 
+        loaderChega = PyPDFLoader("data/chega_programa_legislativas_2024.pdf")
+        loaderAD = PyPDFLoader("data/ad_programa_legislativas_2024.pdf")
+        loaderPS = PyPDFLoader("data/ps_programa_legislativas_2024.pdf")
+        #Falta o PAN (erro 404 no website)
+        #Falta a ND (erro no PDF, salvo como imagem o loader não retira o texto)
+   
         pagesVolt = loaderVolt.load()
         pagesPCP = loaderPCP.load()
-        pagesND = loaderND.load()
         pagesBE = loaderBE.load()
         pagesLivre = loaderLivre.load()
         pagesIL = loaderIL.load()
-        pagesChega1 = loaderChega1.load()
-        pagesChega2 = loaderChega2.load()
+        pagesChega = loaderChega.load()
+        pagesAD = loaderAD.load()
+        pagesPS = loaderPS.load()
         
         # 1.2 Split
         text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=20)
@@ -126,27 +129,41 @@ def setupPoliticalRAG(user_initial_query):
             n += 1
         #------------------------
         # CHEGA
-        splitChega1 = text_splitter.split_documents(pagesChega1)
-        strChega1 = []
-        idsChega1 = []
-        metadataChega1 = []
+        splitChega = text_splitter.split_documents(pagesChega)
+        strChega = []
+        idsChega = []
+        metadataChega = []
         n = 0
-        for doc in splitChega1:
-            strChega1.append(doc.page_content)
-            idsChega1.append("CHEGA"+str(n))
-            metadataChega1.append({"source": "Programa eleitoral do partido CHEGA)"})
+        for doc in splitChega:
+            strChega.append(doc.page_content)
+            idsChega.append("CHEGA"+str(n))
+            metadataChega.append({"source": "Programa eleitoral do partido CHEGA)"})
             n += 1
-        max_n = n
-        splitChega2 = text_splitter.split_documents(pagesChega2)
-        strChega2 = []
-        idsChega2 = []
-        metadataChega2 = []
+        #------------------------
+        # AD
+        splitAD = text_splitter.split_documents(pagesAD)
+        strAD = []
+        idsAD = []
+        metadataAD = []
         n = 0
-        for doc in splitChega2:
-            strChega2.append(doc.page_content)
-            idsChega2.append("CHEGA"+str(n+max_n))
-            metadataChega2.append({"source": "Programa eleitoral do partido CHEGA)"})
+        for doc in splitAD:
+            strAD.append(doc.page_content)
+            idsAD.append("AD"+str(n))
+            metadataAD.append({"source": "Programa eleitoral do partido Aliança Democrárica (AD), composto pelo PSD e CDS)"})
             n += 1
+        #------------------------
+        # PS
+        splitPS = text_splitter.split_documents(pagesPS)
+        strPS = []
+        idsPS = []
+        metadataPS = []
+        n = 0
+        for doc in splitPS:
+            strPS.append(doc.page_content)
+            idsPS.append("PS"+str(n))
+            metadataPS.append({"source": "Programa eleitoral do partido socialista (PS))"})
+            n += 1
+        
         
         # 1.3 Create Chroma DB (one Collection for each political party)
         
@@ -156,14 +173,17 @@ def setupPoliticalRAG(user_initial_query):
         collection_livre = persistent_client.create_collection(name="legislativas_2024_livre",embedding_function=openai_embeddingsf)
         collection_il = persistent_client.create_collection(name="legislativas_2024_il",embedding_function=openai_embeddingsf)
         collection_chega = persistent_client.create_collection(name="legislativas_2024_chega",embedding_function=openai_embeddingsf)
+        collection_ad = persistent_client.create_collection(name="legislativas_2024_ad",embedding_function=openai_embeddingsf)
+        collection_ps = persistent_client.create_collection(name="legislativas_2024_ps",embedding_function=openai_embeddingsf)
 
         collection_volt.add(ids=idsVolt, documents=strVolt, metadatas=metadataVolt)
         collection_pcp.add(ids=idsPCP, documents=strPCP, metadatas=metadataPCP)
         collection_be.add(ids=idsBE, documents=strBE, metadatas=metadataBE)
         collection_livre.add(ids=idsLV, documents=strLV, metadatas=metadataLV)
         collection_il.add(ids=idsIL, documents=strIL, metadatas=metadataIL)
-        collection_chega.add(ids=idsChega1, documents=strChega1, metadatas=metadataChega1)
-        collection_chega.add(ids=idsChega2, documents=strChega2, metadatas=metadataChega2)
+        collection_chega.add(ids=idsChega, documents=strChega, metadatas=metadataChega)
+        collection_ad.add(ids=idsAD, documents=strAD, metadatas=metadataAD)
+        collection_ps.add(ids=idsPS, documents=strPS, metadatas=metadataPS)
     else:
         
         # 1.4 Load Chroma DB (one Collection for each political party)
@@ -174,6 +194,8 @@ def setupPoliticalRAG(user_initial_query):
         collection_livre = persistent_client.get_collection(name="legislativas_2024_livre",embedding_function=openai_embeddingsf)
         collection_il = persistent_client.get_collection(name="legislativas_2024_il",embedding_function=openai_embeddingsf)
         collection_chega = persistent_client.get_collection(name="legislativas_2024_chega",embedding_function=openai_embeddingsf)
+        collection_ad = persistent_client.get_collection(name="legislativas_2024_ad",embedding_function=openai_embeddingsf)
+        collection_ps = persistent_client.get_collection(name="legislativas_2024_ps",embedding_function=openai_embeddingsf)
     
     
     # 2. Retrieval and LLM Generation
@@ -185,7 +207,8 @@ def setupPoliticalRAG(user_initial_query):
     Consider the following list of Portuguese political parties: Partido Bloco de Esquerda (also known by its acronym BE);\
     Partido Volt (also known by its acronym Volt); Partido Comunista Português (also known by its acronym PCP);\
     Partido Nova Democracia (also known by its acronym ND); Partido Livre (also known by its acronym Livre);\
-    Partido Iniciativa Liberal (also known by its acronym IL); and Partido Chega (also known by its acronym CHEGA).\
+    Partido Iniciativa Liberal (also known by its acronym IL); Partido Chega (also known by its acronym CHEGA);\
+    Partido Aliança Democrática (also known by its acronym AD); and Partido Socialista (also known by its acronym PS).\
     From the user question that is delimited by triple backticks:´´´{user_query}´´´, extract which Portuguese political\
     parties from the list are being questioned and required to be adressed to completely answwer the user question.\
     Return the required Portuguese political parties acronyms in a JSON format, inside an array with the key 'partidos'.\
@@ -214,6 +237,9 @@ def setupPoliticalRAG(user_initial_query):
     vectorstore_livre = None
     vectorstore_il = None
     vectorstore_chega = None
+    vectorstore_ad = None
+    vectorstore_ps = None
+    
     output_political_review = "Recolha da resposta em documentação oficial do(s) partido(s) político(s):\n\n"
     
     if 'Volt' in json_object["partidos"]:
@@ -306,6 +332,36 @@ def setupPoliticalRAG(user_initial_query):
         result_chega = qa_chain_chega.invoke({'query': user_initial_query})
         output_political_review += " \n CHEGA \n "+" \n "+result_chega['result']+" \n "
     
+    if 'AD' in json_object["partidos"]:
+        if vectorstore_ad is None:
+            vectorstore_ad = Chroma(
+                client=persistent_client,
+                collection_name="legislativas_2024_ad",
+                embedding_function=openai_embeddings,
+            )
+        qa_chain_ad = RetrievalQA.from_chain_type(
+            llm,
+            retriever=vectorstore_ad.as_retriever(search_kwargs={'k': 4}),
+            return_source_documents=True
+        )
+        result_ad = qa_chain_ad.invoke({'query': user_initial_query})
+        output_political_review += " \n AD \n "+" \n "+result_ad['result']+" \n "
+    
+    if 'PS' in json_object["partidos"]:
+        if vectorstore_ps is None:
+            vectorstore_ps = Chroma(
+                client=persistent_client,
+                collection_name="legislativas_2024_ps",
+                embedding_function=openai_embeddings,
+            )
+        qa_chain_ps = RetrievalQA.from_chain_type(
+            llm,
+            retriever=vectorstore_ps.as_retriever(search_kwargs={'k': 4}),
+            return_source_documents=True
+        )
+        result_ps = qa_chain_ps.invoke({'query': user_initial_query})
+        output_political_review += " \n PS \n "+" \n "+result_ps['result']+" \n "
+    
     print(output_political_review)
     with st.chat_message("assistant"):
         st.write(output_political_review)
@@ -323,9 +379,7 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="expanded",
     menu_items={
-        'Get Help': 'https://www.extremelycoolapp.com/help',
-        'Report a bug': "https://www.extremelycoolapp.com/bug",
-        'About': "# Esta aplicação foi desenvolvida por João Meneses com recurso ao LLM da OpenAI, numa estratégia de RAG utilizando como fonte de dados os programas políticos oficiais de cada partido para as legislativas 2024. Na ausência de documentação específica de 2024 foi usada a documentação das eleições de 2022. Esta aplicação não visa qualquer objectivo para além de ser demonstrativa da tecnologia dos LLM. Os resultados dos pedidos ao LLM devem ser interpretados de forma crítica e em consideração que a amostragem do modelo pode levar a resposta incompletas ou incorrectas. This is an *extremely* cool app!"
+        'About': "Esta aplicação foi desenvolvida por João Meneses com recurso ao LLM da OpenAI, numa estratégia de RAG utilizando como fonte de dados os programas políticos oficiais dos principais partidos concorrentes nas legislativas 2024. Esta aplicação não visa qualquer objectivo particular para além de ser demonstrativa da tecnologia dos LLM. A sua utilização e os seus resultados devem ser interpretados de forma crítica e em consideração que a amostragem do modelo pode levar a resposta incompletas ou incorrectas. O criador da aplicação não se responsabiliza por erros, omissões ou quaisquer outros resultantes da utilização da aplicação. O código fonte encontra-se aberto e disponível na plataforma GITHUB."
     }
 )
 
@@ -334,7 +388,7 @@ st.title('Eleições Legislativas 2024')
 
 # Present AI
 with st.chat_message("assistant"):
-    textAI = "Olá! Sou o escrutin.AI e no contexto das eleições legislativas Portuguesas de 2024 estou aqui para te ajudar a realizar buscas simultâneamente nos vários programas eleitorais para que os consigas comparar, no teu tempo e nos teus próprios termos.\n \n Faz uma questão ou pedido sobre um tópico ou sobre as propostas/medidas políticas de todos os partidos, de um subconjunto deles, ou apenas a um partido em particular. (ex: Refere as medidas dos partidos com impacto na habitação jovem.)"
+    textAI = "Olá! Sou o escrutin.AI e no contexto das eleições legislativas Portuguesas de 2024 estou aqui para te tentar ajudar a realizar buscas simultâneamente nos vários programas eleitorais para que os consigas comparar no teu tempo e nos teus próprios termos.\n \n Faz uma questão ou pedido sobre um tópico ou sobre as propostas/medidas políticas de todos os partidos, de um subconjunto deles, ou apenas a um partido em particular. (ex: Refere as medidas dos partidos com impacto na habitação jovem.)"
     st.write(textAI)
 
 # React to user input
